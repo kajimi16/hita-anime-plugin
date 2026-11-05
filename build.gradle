@@ -1,0 +1,28 @@
+buildscript {
+    ext {
+        kotlin_version = '1.9.22'
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions { jvmTarget = "1.8" }
+    }
+}
+
+// 这是外部插件仓库：只负责构建。
+// 正式发布由 hita-community-plugins 的 Publish Plugin workflow 完成，
+// 本仓库不写 registry、不托管发布产物。
+tasks.register('assemblePlugin') {
+    dependsOn ':anime-plugin:assembleRelease'
+    group = 'plugin'
+    description = '构建界面插件 APK（本地调试用）'
+}
