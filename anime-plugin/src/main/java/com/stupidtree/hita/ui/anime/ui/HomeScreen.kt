@@ -1,28 +1,29 @@
 package com.stupidtree.hita.ui.anime.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,23 +32,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stupidtree.hita.api.TimetableService
-import com.stupidtree.hitax.data.model.timetable.EventItem
 import com.stupidtree.hita.ui.anime.data.BgmSource
 import com.stupidtree.hita.ui.anime.data.CollectionEntry
 import com.stupidtree.hita.ui.anime.data.Prefs
-import com.stupidtree.hita.ui.anime.data.buildAiringSchedule
 import com.stupidtree.hita.ui.anime.data.Schedule
 import com.stupidtree.hita.ui.anime.data.ScheduleDay
 import com.stupidtree.hita.ui.anime.data.SubjectSummary
-import com.stupidtree.hita.ui.anime.data.formatShortDay
+import com.stupidtree.hita.ui.anime.data.buildAiringSchedule
 import com.stupidtree.hita.ui.anime.data.todayIso
 import com.stupidtree.hita.ui.anime.data.todayWeekday
 import com.stupidtree.hita.ui.anime.data.weekDates
+import com.stupidtree.hitax.data.model.timetable.EventItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -59,6 +61,7 @@ private data class HomeData(
     val today: List<SubjectSummary>,
     val schedule: Schedule,
     val doing: List<CollectionEntry>,
+    val watched: List<CollectionEntry>,
     val todayEvents: List<EventItem>,
 )
 
@@ -82,8 +85,6 @@ fun HomeScreen(
         runCatching {
             withContext(Dispatchers.IO) {
                 coroutineScope {
-                    // 一次 calendar 同时供「今日放送」和「本周放送」使用，
-                    // 避免两个请求之间出现不一致。
                     val calendarDeferred = async { bgm.calendar() }
                     val doingDeferred = async {
                         val username = prefs.bgmUsername
@@ -92,6 +93,16 @@ fun HomeScreen(
                         } else {
                             runCatching {
                                 bgm.userCollections(username, type = 3, offset = 0, limit = 12).data
+                            }.getOrDefault(emptyList())
+                        }
+                    }
+                    val watchedDeferred = async {
+                        val username = prefs.bgmUsername
+                        if (prefs.bgmToken.isBlank() || username.isBlank()) {
+                            emptyList()
+                        } else {
+                            runCatching {
+                                bgm.userCollections(username, type = 2, offset = 0, limit = 12).data
                             }.getOrDefault(emptyList())
                         }
                     }
@@ -105,9 +116,10 @@ fun HomeScreen(
                         today = calendarDays.firstOrNull { it.weekday == weekday }
                             ?.items.orEmpty()
                             .sortedByDescending { it.score ?: 0.0 }
-                            .take(20),
+                            .take(16),
                         schedule = buildAiringSchedule(calendarDays, 0, weekDates(0)),
                         doing = doingDeferred.await(),
+                        watched = watchedDeferred.await(),
                         todayEvents = eventsDeferred.await(),
                     )
                 }
@@ -118,27 +130,7 @@ fun HomeScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "番剧",
-                    style = MaterialTheme.typography.h5,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "课表 × Bangumi × 校内弹幕",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
-                )
-            }
-            IconButton(onClick = { refreshTick++ }) {
-                Icon(Icons.Filled.Refresh, contentDescription = "刷新")
-            }
-        }
-
+        HomeHeader(onRefresh = { refreshTick++ })
         when {
             loading && data == null -> LoadingState()
             error != null && data == null -> ErrorState(error!!) { refreshTick++ }
@@ -156,6 +148,41 @@ fun HomeScreen(
 }
 
 @Composable
+private fun HomeHeader(onRefresh: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colors.primary.copy(alpha = 0.14f),
+                        MaterialTheme.colors.background,
+                    ),
+                ),
+            )
+            .padding(start = AnimeDimens.screenPadding, end = 8.dp, top = 10.dp, bottom = 6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "番剧",
+                    style = MaterialTheme.typography.h4,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "课表 × Bangumi × 校内弹幕",
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.55f),
+                )
+            }
+            IconButton(onClick = onRefresh) {
+                Icon(Icons.Filled.Refresh, contentDescription = "刷新", tint = MaterialTheme.colors.onBackground)
+            }
+        }
+    }
+}
+
+@Composable
 private fun HomeContent(
     data: HomeData,
     prefs: Prefs,
@@ -165,20 +192,26 @@ private fun HomeContent(
     onOpenTab: (String) -> Unit,
 ) {
     var selectedDate by remember(data.schedule) {
-        mutableStateOf(data.schedule.days.firstOrNull { it.date == todayIso() }?.date
-            ?: data.schedule.days.firstOrNull()?.date)
+        mutableStateOf(
+            data.schedule.days.firstOrNull { it.date == todayIso() }?.date
+                ?: data.schedule.days.firstOrNull()?.date,
+        )
     }
 
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         if (timetableAvailable) {
-            item { TimetableSection(data.todayEvents, onOpenClass) }
+            item {
+                TimetableModule(data.todayEvents, onOpenClass)
+            }
         }
-        item {
-            TodayHero(data.today, onOpenSubject)
-        }
+
         item {
             SectionTitle(
-                "继续追番",
+                "继续观看",
                 trailing = if (data.doing.isEmpty()) null else "全部",
                 onTrailing = { onOpenTab("library") },
             )
@@ -188,102 +221,147 @@ private fun HomeContent(
                 BindHint(prefs, onOpenTab)
             } else {
                 LazyRow(
-                    Modifier.fillMaxWidth(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                    contentPadding = PaddingValues(horizontal = AnimeDimens.screenPadding),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(data.doing, key = { it.collection.subjectId }) { entry ->
-                        DoingCard(entry) {
-                            onOpenSubject(entry.collection.subjectId, entry.subject?.displayName)
+                        val subject = entry.subject
+                        ContinueWatchingCard(
+                            subject = subject,
+                            title = subject?.displayName ?: "条目 ${entry.collection.subjectId}",
+                            progressText = if (entry.collection.epStatus > 0) {
+                                "看到第 ${entry.collection.epStatus} 集"
+                            } else {
+                                "尚未开始"
+                            },
+                            onClick = {
+                                onOpenSubject(entry.collection.subjectId, subject?.displayName)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (data.today.isNotEmpty()) {
+            item { SectionTitle("今日更新") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = AnimeDimens.screenPadding),
+                    horizontalArrangement = Arrangement.spacedBy(AnimeDimens.gridGap),
+                ) {
+                    items(data.today, key = { it.id }) { subject ->
+                        PosterCard(
+                            subject = subject,
+                            modifier = Modifier.width(118.dp),
+                            onClick = { onOpenSubject(subject.id, subject.displayName) },
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            SectionTitle(
+                "放送表",
+                trailing = "全部",
+                onTrailing = { onOpenTab("schedule") },
+            )
+        }
+        item {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = AnimeDimens.screenPadding),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(data.schedule.days.size) { index ->
+                    val day = data.schedule.days[index]
+                    DaySegment(
+                        date = day.date,
+                        index = index,
+                        count = day.items.size,
+                        selected = day.date == selectedDate,
+                        onClick = { selectedDate = day.date },
+                    )
+                }
+            }
+        }
+        val selectedDay = data.schedule.days.firstOrNull { it.date == selectedDate }
+        if (selectedDay == null || selectedDay.items.isEmpty()) {
+            item { EmptyState("这一天没有在播番组") }
+        } else {
+            items(selectedDay.items.take(8), key = { it.id }) { subject ->
+                SubjectRow(
+                    subject,
+                    subtitle = subject.tags.take(2).joinToString(" · ") { it.name }
+                        .takeIf { it.isNotBlank() },
+                ) {
+                    onOpenSubject(subject.id, subject.displayName)
+                }
+            }
+        }
+
+        item {
+            SectionTitle(
+                "我的收藏",
+                trailing = if (data.watched.isEmpty()) null else "全部",
+                onTrailing = { onOpenTab("library") },
+            )
+        }
+        item {
+            if (data.watched.isEmpty()) {
+                Text(
+                    "还没有看过的收藏。绑定或标记后这里会出现海报墙。",
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.5f),
+                    modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding, vertical = 6.dp),
+                )
+            } else {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = AnimeDimens.screenPadding),
+                    horizontalArrangement = Arrangement.spacedBy(AnimeDimens.gridGap),
+                ) {
+                    items(data.watched, key = { "watched-${it.collection.subjectId}" }) { entry ->
+                        val subject = entry.subject
+                        if (subject != null) {
+                            PosterCard(
+                                subject = subject,
+                                modifier = Modifier.width(118.dp),
+                                onClick = { onOpenSubject(subject.id, subject.displayName) },
+                                badge = entry.collection.rate.takeIf { it > 0 }?.let { "★ $it" },
+                            )
+                        } else {
+                            PosterPlaceholder(entry)
                         }
                     }
                 }
             }
         }
-        item {
-            SectionTitle("本周放送")
-        }
-        item {
-            DayChips(data.schedule.days, selectedDate) { selectedDate = it }
-        }
-        val day = data.schedule.days.firstOrNull { it.date == selectedDate }
-        if (day == null || day.items.isEmpty()) {
-            item { EmptyState("这一天没有放送") }
-        } else {
-            items(day.items, key = { it.id }) { subject ->
-                SubjectRow(subject) {
-                    onOpenSubject(subject.id, subject.displayName)
-                }
-            }
-        }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
 @Composable
-private fun TimetableSection(events: List<EventItem>, onOpen: (EventItem) -> Unit) {
+private fun TimetableModule(events: List<EventItem>, onOpenClass: (EventItem) -> Unit) {
     val now = System.currentTimeMillis()
     val sorted = events.sortedBy { it.from.time }
-    Column(Modifier.fillMaxWidth()) {
-    SectionTitle("今日课表", trailing = "${sorted.size} 节")
-    if (sorted.isEmpty()) {
-        Text(
-            "今天没有课，安心补番。",
-            fontSize = 12.sp,
-            color = MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-    } else {
-        sorted.take(6).forEach { event ->
-            val inClass = now >= event.from.time && now < event.to.time
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpen(event) }
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    timeRange(event),
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
-                    modifier = Modifier.width(84.dp),
-                )
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        event.name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val place = listOfNotNull(
-                        event.place?.takeIf { it.isNotBlank() },
-                        event.teacher?.takeIf { it.isNotBlank() },
-                    ).joinToString(" · ")
-                    if (place.isNotBlank()) {
-                        Text(
-                            place,
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                if (inClass) TagPill("上课中", selected = true)
-            }
-        }
-        if (sorted.size > 6) {
-            Text(
-                "还有 ${sorted.size - 6} 节",
-                fontSize = 11.sp,
-                color = MaterialTheme.colors.onBackground.copy(alpha = 0.45f),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-            )
-        }
+    val current = sorted.firstOrNull { now >= it.from.time && now < it.to.time }
+    val next = sorted.firstOrNull { it.from.time > now } ?: sorted.firstOrNull()
+    val anchor = current ?: next
+    val detail = when {
+        sorted.isEmpty() -> "今天没有课，安心补番"
+        current != null -> "${timeRange(current)} · ${current.name} · 上课中"
+        next != null -> "${timeRange(next)} · ${next.name}"
+        else -> "今天没有课"
     }
-    Spacer(Modifier.height(4.dp))
+    Surface(
+        color = MaterialTheme.colors.background,
+        modifier = Modifier.padding(start = AnimeDimens.screenPadding, end = AnimeDimens.screenPadding, top = 4.dp),
+    ) {
+        TimetableCompactCard(
+            title = "今日课表 · ${sorted.size} 节",
+            detail = detail,
+            inClass = current != null,
+            onClick = { anchor?.let(onOpenClass) },
+        )
     }
 }
 
@@ -293,137 +371,54 @@ private fun timeRange(event: EventItem): String =
     "${classTimeFormat.format(event.from)}-${classTimeFormat.format(event.to)}"
 
 @Composable
-private fun TodayHero(items: List<SubjectSummary>, onOpenSubject: (Int, String?) -> Unit) {
-    if (items.isEmpty()) {
-        EmptyState("今日没有放送")
-        return
-    }
-    Column {
-        SectionTitle("今日放送")
-        LazyRow(
-            Modifier.fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(items, key = { it.id }) { subject ->
-                Column(
-                    Modifier
-                        .width(112.dp)
-                        .clickable { onOpenSubject(subject.id, subject.displayName) },
-                ) {
-                    Box {
-                        AsyncCover(
-                            subject.images.hero ?: subject.images.cover,
-                            Modifier.size(width = 112.dp, height = 156.dp),
-                        )
-                        ScorePill(
-                            subject.score,
-                            Modifier.align(Alignment.BottomStart).padding(6.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        subject.displayName,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DoingCard(entry: CollectionEntry, onClick: () -> Unit) {
-    val subject = entry.subject
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        elevation = 0.dp,
-        backgroundColor = MaterialTheme.colors.surface,
-        modifier = Modifier
-            .width(260.dp)
-            .clickable(onClick = onClick),
-    ) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            AsyncCover(subject?.images?.common ?: subject?.images?.cover, Modifier.size(52.dp, 72.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    subject?.displayName ?: "条目 ${entry.collection.subjectId}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    if (entry.collection.epStatus > 0) {
-                        "看到第 ${entry.collection.epStatus} 集"
-                    } else {
-                        "尚未开始"
-                    },
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.55f),
-                )
-                if (entry.collection.rate > 0) {
-                    Text(
-                        "我的评分 ${entry.collection.rate}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colors.secondaryVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun BindHint(prefs: Prefs, onOpenTab: (String) -> Unit) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        elevation = 0.dp,
-        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.08f),
+    Surface(
+        color = MaterialTheme.colors.primary.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(AnimeDimens.cardRadius),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AnimeDimens.screenPadding)
             .clickable { onOpenTab("profile") },
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
                 if (prefs.bgmToken.isBlank()) "绑定 Bangumi，开启追番同步" else "同步你的 Bangumi 收藏",
+                style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 if (prefs.bgmToken.isBlank()) {
-                    "在设置里填入个人访问令牌，即可读取收藏、回写进度与评分。"
+                    "填入个人访问令牌，即可读取收藏、回写进度与评分。"
                 } else {
                     "前往设置校验令牌并查看账号状态。"
                 },
-                fontSize = 12.sp,
-                color = MaterialTheme.colors.onBackground.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.caption,
+                color = mutedOnSurface(),
             )
         }
     }
 }
 
 @Composable
-private fun DayChips(days: List<ScheduleDay>, selected: String?, onSelect: (String) -> Unit) {
-    LazyRow(
-        Modifier.fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(days, key = { it.date }) { day ->
-            TagPill(
-                text = formatShortDay(day.date),
-                selected = day.date == selected,
-                onClick = { onSelect(day.date) },
-            )
+private fun PosterPlaceholder(entry: CollectionEntry) {
+    Column(Modifier.width(118.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(210.dp)
+                .clip(RoundedCornerShape(AnimeDimens.posterRadius))
+                .background(MaterialTheme.colors.primary.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("${entry.collection.subjectId}", fontSize = 11.sp, color = mutedOnSurface())
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "条目 ${entry.collection.subjectId}",
+            style = MaterialTheme.typography.caption,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
-

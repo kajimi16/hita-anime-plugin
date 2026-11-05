@@ -49,7 +49,7 @@ class BgmApi(
                     if (filter.tags.isNotEmpty()) {
                         put("tag", JSONArray(filter.tags))
                     }
-                    val dates = airDateFilter(filter.year, filter.month)
+                    val dates = airDateFilter(filter.year, filter.quarter)
                     if (dates.isNotEmpty()) {
                         put("air_date", JSONArray(dates))
                     }
@@ -371,14 +371,12 @@ class BgmApi(
         private fun encodePath(value: String): String =
             URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
-        private fun airDateFilter(year: Int?, month: Int?): List<String> {
+        private fun airDateFilter(year: Int?, quarter: Int?): List<String> {
             if (year == null) return emptyList()
-            if (month == null) {
-                return listOf(">=$year-01-01", "<=$year-12-31")
-            }
-            val start = "%04d-%02d-01".format(year, month)
-            val days = daysInMonth(year, month)
-            val end = "%04d-%02d-%02d".format(year, month, days)
+            val startMonth = if (quarter == null) 1 else (quarter - 1) * 3 + 1
+            val endMonth = if (quarter == null) 12 else startMonth + 2
+            val start = "%04d-%02d-01".format(year, startMonth)
+            val end = "%04d-%02d-%02d".format(year, endMonth, daysInMonth(year, endMonth))
             return listOf(">=$start", "<=$end")
         }
     }

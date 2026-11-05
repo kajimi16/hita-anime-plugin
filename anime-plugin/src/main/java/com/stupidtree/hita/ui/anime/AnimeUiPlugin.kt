@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.KeyEvent
 import android.view.View
 import android.widget.FrameLayout
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -256,19 +258,26 @@ private fun RootScreen(
     Column(Modifier.fillMaxSize()) {
         // 宿主本身已有底部导航；插件再放一个会被压在它下面（实测完全不可见），
         // 因此这里用顶部的分段导航，始终可点。
-        Surface(
-            color = MaterialTheme.colors.surface,
-            elevation = 2.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colors.surface)
+                    .padding(4.dp),
+            ) {
                 tabs.forEach { tab ->
                     val active = selected == tab.id
                     Column(
                         Modifier
                             .weight(1f)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                            .background(
+                                if (active) MaterialTheme.colors.primary.copy(alpha = 0.13f)
+                                else androidx.compose.ui.graphics.Color.Transparent,
+                            )
                             .clickable { selected = tab.id }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
@@ -279,11 +288,11 @@ private fun RootScreen(
                             } else {
                                 MaterialTheme.colors.onSurface.copy(alpha = 0.42f)
                             },
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(19.dp),
                         )
                         Text(
                             tab.title,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = if (active) {
                                 MaterialTheme.colors.primary
                             } else {

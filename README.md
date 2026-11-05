@@ -5,7 +5,7 @@ OH-MY-HITA 的外部番剧插件（独立仓库，不随宿主发版）。
 - 插件 id：`com.stupidtree.hita.ui.anime`
 - 形态：运行时界面插件（`ComposeUiPlugin`）
 - 契约：`apiVersion 5` / Compose `1.6.8`
-- 版本：`0.3.0`
+- 版本：`0.4.0`
 
 ## 功能
 
@@ -62,10 +62,21 @@ OH-MY-HITA 的外部番剧插件（独立仓库，不随宿主发版）。
 | kind | `ui` |
 | plugin_id | `com.stupidtree.hita.ui.anime` |
 | name | `番剧` |
-| version | `0.3.0` |
+| version | `0.4.0` |
 | entry_class | `com.stupidtree.hita.ui.anime.AnimeUiPlugin` |
 | min_host_api | `5` |
 | tags | `bangumi,anime,danmaku` |
+
+## 0.4.0 变更（UI 对齐 Animeko）
+
+- 设计 token：Animeko 默认种子色 `#4F378B`、M3 紫色明暗配色、9:16 海报、
+  大圆角、标题层级与间距；移除 Material 2 默认观感
+- 首页：紧凑课表卡、继续观看横向大卡、放送表日分段、今日更新海报行、
+  我的收藏海报墙
+- 条目详情：封面 + 渐变头部、分段 tab、章节格子、评分直方图、角色横滑
+- 搜索：年份/季度/标签 chip，双列 9:16 海报网格与封面角标
+- 追番：状态 tab + 双列海报网格，替换列表行
+- 顶部导航改为胶囊分段式（宿主底部导航固定，插件不能占用）
 
 ## 已知限制
 

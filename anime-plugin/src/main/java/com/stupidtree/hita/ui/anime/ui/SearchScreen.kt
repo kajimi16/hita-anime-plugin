@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.CircularProgressIndicator
@@ -75,7 +77,7 @@ fun SearchScreen(
     var type by remember { mutableStateOf(2) }
     var sort by remember { mutableStateOf("match") }
     var year by remember { mutableStateOf<Int?>(null) }
-    var month by remember { mutableStateOf<Int?>(null) }
+    var quarter by remember { mutableStateOf<Int?>(null) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
     var results by remember { mutableStateOf<List<SubjectSummary>>(emptyList()) }
     var total by remember { mutableStateOf(0) }
@@ -90,7 +92,7 @@ fun SearchScreen(
         sort = sort,
         tags = tags,
         year = year,
-        month = month,
+        quarter = quarter,
     )
 
     fun runSearch() {
@@ -131,15 +133,17 @@ fun SearchScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("找番", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(start = AnimeDimens.screenPadding, end = AnimeDimens.screenPadding, top = 10.dp)) {
+            Text("找番", style = MaterialTheme.typography.h4, fontWeight = FontWeight.Bold)
+            Text(
+                "关键词 + 年份 + 季度 + 标签",
+                style = MaterialTheme.typography.caption,
+                color = mutedOnSurface(0.55f),
+            )
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
@@ -147,20 +151,26 @@ fun SearchScreen(
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                shape = RoundedCornerShape(50),
                 placeholder = { Text("搜索番剧、书籍、游戏…", fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = null,
+                        tint = mutedOnSurface(),
+                    )
+                },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
                     keyword = input.trim()
                     runSearch()
                 }),
             )
-            Spacer(Modifier.height(0.dp))
             IconButton(onClick = {
                 keyword = input.trim()
                 runSearch()
             }) {
-                Icon(Icons.Filled.Search, contentDescription = "搜索")
+                Icon(Icons.Filled.Search, contentDescription = "搜索", tint = MaterialTheme.colors.primary)
             }
         }
 
@@ -168,41 +178,38 @@ fun SearchScreen(
             type = type,
             sort = sort,
             year = year,
-            month = month,
+            quarter = quarter,
             tags = tags,
             onType = { type = it },
             onSort = { sort = it },
             onYear = {
                 year = it
-                if (it == null) month = null
+                if (it == null) quarter = null
             },
-            onMonth = { month = it },
-            onTag = { tag ->
-                tags = if (tag in tags) tags - tag else tags + tag
-            },
+            onQuarter = { quarter = it },
+            onTag = { tag -> tags = if (tag in tags) tags - tag else tags + tag },
         )
 
         if (!searched) {
-            HistoryAndHints(
-                prefs = prefs,
-                onPick = {
-                    input = it
-                    keyword = it
-                    runSearch()
-                },
-            )
+            HistoryAndHints(prefs) {
+                input = it
+                keyword = it
+                runSearch()
+            }
         } else {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     if (total > 0) "共 $total 条 · 已显示 ${results.size}" else "没有结果",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.55f),
                     modifier = Modifier.weight(1f),
                 )
-                if (loading) CircularProgressIndicator(Modifier.height(14.dp), strokeWidth = 2.dp)
+                if (loading) {
+                    CircularProgressIndicator(Modifier.height(14.dp), strokeWidth = 2.dp)
+                }
             }
 
             when {
@@ -210,13 +217,21 @@ fun SearchScreen(
                 results.isEmpty() && !loading -> EmptyState("没有找到条目", "换个关键词或去掉筛选试试")
                 else -> LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(
+                        start = AnimeDimens.screenPadding,
+                        end = AnimeDimens.screenPadding,
+                        bottom = 96.dp,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(AnimeDimens.gridGap),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.weight(1f),
                 ) {
                     items(results, key = { it.id }) { subject ->
-                        SubjectGridCard(subject) {
-                            onOpenSubject(subject.id, subject.displayName)
-                        }
+                        PosterGridCard(
+                            subject = subject,
+                            onClick = { onOpenSubject(subject.id, subject.displayName) },
+                            badge = subject.tags.firstOrNull()?.name,
+                        )
                     }
                     item {
                         Box(
@@ -228,8 +243,8 @@ fun SearchScreen(
                             } else {
                                 Text(
                                     "已经到底了",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colors.onBackground.copy(alpha = 0.4f),
+                                    style = MaterialTheme.typography.caption,
+                                    color = mutedOnSurface(0.4f),
                                 )
                             }
                         }
@@ -245,45 +260,61 @@ private fun FilterSection(
     type: Int,
     sort: String,
     year: Int?,
-    month: Int?,
+    quarter: Int?,
     tags: List<String>,
     onType: (Int) -> Unit,
     onSort: (String) -> Unit,
     onYear: (Int?) -> Unit,
-    onMonth: (Int?) -> Unit,
+    onQuarter: (Int?) -> Unit,
     onTag: (String) -> Unit,
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     Column {
-        HorizontalChips(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        FilterRow("类型") {
             typeOptions.forEach { (value, label) ->
                 TagPill(label, selected = type == value, onClick = { onType(value) })
             }
         }
-        HorizontalChips(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        FilterRow("排序") {
             sortOptions.forEach { (value, label) ->
                 TagPill(label, selected = sort == value, onClick = { onSort(value) })
             }
         }
-        HorizontalChips(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-            TagPill("全部年份", selected = year == null, onClick = { onYear(null) })
+        FilterRow("年份") {
+            TagPill("全部", selected = year == null, onClick = { onYear(null) })
             (currentYear downTo currentYear - 8).forEach { value ->
                 TagPill("$value", selected = year == value, onClick = { onYear(value) })
             }
         }
         if (year != null) {
-            HorizontalChips(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                TagPill("全年", selected = month == null, onClick = { onMonth(null) })
-                (1..12).forEach { value ->
-                    TagPill("$value 月", selected = month == value, onClick = { onMonth(value) })
+            FilterRow("季度") {
+                TagPill("全年", selected = quarter == null, onClick = { onQuarter(null) })
+                (1..4).forEach { value ->
+                    TagPill("Q$value", selected = quarter == value, onClick = { onQuarter(value) })
                 }
             }
         }
-        HorizontalChips(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        FilterRow("标签") {
             tagOptions.forEach { tag ->
                 TagPill(tag, selected = tag in tags, onClick = { onTag(tag) })
             }
         }
+    }
+}
+
+@Composable
+private fun FilterRow(label: String, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.overline,
+            color = mutedOnSurface(0.5f),
+            modifier = Modifier.width(30.dp),
+        )
+        HorizontalChips(Modifier.weight(1f), content = content)
     }
 }
 
@@ -296,24 +327,31 @@ private fun HistoryAndHints(prefs: Prefs, onPick: (String) -> Unit) {
                 trailing = "清空",
                 onTrailing = { prefs.clearSearchHistory() },
             )
-            HorizontalChips(Modifier.padding(horizontal = 16.dp)) {
+            HorizontalChips(Modifier.padding(horizontal = AnimeDimens.screenPadding)) {
                 prefs.searchHistory.forEach { keyword ->
                     TagPill(keyword, onClick = { onPick(keyword) })
                 }
             }
         }
         SectionTitle("热门标签")
-        HorizontalChips(Modifier.padding(horizontal = 16.dp)) {
-            tagOptions.take(10).forEach { tag ->
-                TagPill(tag, onClick = { onPick(tag) })
+        Column(Modifier.padding(horizontal = AnimeDimens.screenPadding)) {
+            tagOptions.chunked(4).forEach { row ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    row.forEach { tag ->
+                        TagPill(tag, onClick = { onPick(tag) })
+                    }
+                }
             }
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "支持关键词 + 标签 + 年份 + 排序组合筛选。",
-            fontSize = 12.sp,
-            color = MaterialTheme.colors.onBackground.copy(alpha = 0.5f),
-            modifier = Modifier.padding(horizontal = 16.dp),
+            "筛选条件可组合：类型、排序、年份、季度、标签。",
+            style = MaterialTheme.typography.caption,
+            color = mutedOnSurface(0.5f),
+            modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding),
         )
     }
 }

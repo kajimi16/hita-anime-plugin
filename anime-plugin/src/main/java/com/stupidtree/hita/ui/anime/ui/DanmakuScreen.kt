@@ -91,7 +91,7 @@ fun DanmakuScreen(
 
     Column(Modifier.fillMaxSize()) {
         TopBar("弹幕 · ${subjectTitle}", onBack = onBack)
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 8.dp)) {
             Text(
                 "第 ${episode.label} 集 · ${episode.displayName}",
                 fontSize = 13.sp,
@@ -127,10 +127,10 @@ fun DanmakuScreen(
                 "未登录站点：可以浏览弹幕；发送与本校筛选需要登录。",
                 fontSize = 11.sp,
                 color = androidx.compose.material.MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding),
             )
         } else {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = text,
@@ -215,7 +215,7 @@ fun DanmakuScreen(
                         "按时间轴排序，颜色为发送时的原始颜色。",
                         fontSize = 10.sp,
                         color = androidx.compose.material.MaterialTheme.colors.onBackground.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding, vertical = 4.dp),
                     )
                 }
                 items(items, key = { it.id }) { item ->
@@ -249,7 +249,7 @@ fun DanmakuScreen(
                         }
                     }
                 }
-                item { Spacer(Modifier.height(24.dp)) }
+                item { Spacer(Modifier.height(96.dp)) }
             }
         }
     }

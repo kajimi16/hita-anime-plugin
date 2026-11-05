@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +44,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -310,7 +316,7 @@ fun SubjectScreen(
                         6 -> item { reviewsTab(hitani, subjectId) }
                         else -> item { resourcesTab(hitani, subjectId) }
                     }
-                    item { Spacer(Modifier.height(32.dp)) }
+                    item { Spacer(Modifier.height(96.dp)) }
                 }
             }
         }
@@ -445,7 +451,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.summaryTab(subject: S
     val detail = subject.detail
     item {
         var expanded by remember(detail.id) { mutableStateOf(false) }
-        Column(Modifier.padding(horizontal = 16.dp)) {
+        Column(Modifier.padding(horizontal = AnimeDimens.screenPadding)) {
             detail.summary?.takeIf { it.isNotBlank() }?.let { summary ->
                 Text(
                     summary,
@@ -498,64 +504,44 @@ private fun androidx.compose.foundation.lazy.LazyListScope.charactersTab(
     }
     item {
         LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = AnimeDimens.screenPadding),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(characters, key = { it.id }) { character ->
                 Column(
-                    Modifier.width(92.dp).clickable { onOpen(character) },
+                    Modifier.width(96.dp).clickable { onOpen(character) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    AsyncCover(character.images.medium ?: character.images.common ?: character.images.cover, Modifier.size(82.dp), radius = 41.dp)
+                    AsyncCover(
+                        character.images.medium ?: character.images.common ?: character.images.cover,
+                        Modifier.fillMaxWidth().aspectRatio(3f / 4f),
+                        radius = 16.dp,
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         character.name,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                     )
                     Text(
                         character.relation,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.overline,
+                        color = mutedOnSurface(),
                         maxLines = 1,
                     )
                     character.actors.firstOrNull()?.let {
                         Text(
                             "CV ${it.name}",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
+                            style = MaterialTheme.typography.overline,
+                            color = mutedOnSurface(0.55f),
                             maxLines = 1,
                         )
                     }
                 }
             }
-        }
-    }
-    items(characters, key = { "row-${it.id}" }) { character ->
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable { onOpen(character) }
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AsyncCover(character.images.small ?: character.images.grid, Modifier.size(44.dp), radius = 22.dp)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(character.name, fontSize = 13.sp)
-                Text(
-                    character.actors.joinToString(" / ") { it.name },
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
-                )
-            }
-            Text(
-                character.relation,
-                fontSize = 11.sp,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.55f),
-            )
         }
     }
 }
@@ -576,7 +562,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.staffTab(
                 .padding(horizontal = 16.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncCover(person.images.small ?: person.images.grid, Modifier.size(40.dp), radius = 20.dp)
+            AsyncCover(person.images.small ?: person.images.grid, Modifier.size(40.dp), radius = 10.dp)
             Spacer(Modifier.width(10.dp))
             Text(person.name, fontSize = 13.sp, modifier = Modifier.weight(1f))
             Text(
@@ -604,7 +590,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.relatedTab(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncCover(subject.images.medium ?: subject.images.common ?: subject.images.cover, Modifier.size(52.dp, 72.dp))
+            AsyncCover(subject.images.medium ?: subject.images.common ?: subject.images.cover, Modifier.size(52.dp, 72.dp), radius = 10.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -835,14 +821,37 @@ private fun resourcesTab(hitani: HitaniApi, subjectId: Int) {
 
 @Composable
 private fun SubjectHeader(detail: SubjectDetail) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(16.dp)) {
-            AsyncCover(detail.images.hero, Modifier.size(width = 116.dp, height = 162.dp))
+    Box(Modifier.fillMaxWidth().height(292.dp)) {
+        AsyncCover(
+            detail.images.hero ?: detail.images.cover,
+            Modifier.fillMaxSize(),
+            radius = 0.dp,
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.10f),
+                    0.52f to MaterialTheme.colors.background.copy(alpha = 0.55f),
+                    1f to MaterialTheme.colors.background,
+                ),
+            ),
+        )
+        Row(
+            Modifier.align(Alignment.BottomStart)
+                .padding(horizontal = AnimeDimens.screenPadding, vertical = 14.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            AsyncCover(
+                detail.images.hero,
+                Modifier.size(width = 108.dp, height = 154.dp),
+                radius = 16.dp,
+            )
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     detail.displayName,
-                    style = MaterialTheme.typography.h6,
+                    style = MaterialTheme.typography.h5,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -850,8 +859,8 @@ private fun SubjectHeader(detail: SubjectDetail) {
                 if (detail.nameCn != null && detail.nameCn.isNotBlank()) {
                     Text(
                         detail.name,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.caption,
+                        color = mutedOnSurface(0.6f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -859,28 +868,33 @@ private fun SubjectHeader(detail: SubjectDetail) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ScorePill(detail.score)
-                    Spacer(Modifier.width(8.dp))
                     detail.rank?.let {
-                        Text("排名 #$it", fontSize = 11.sp, color = MaterialTheme.colors.onSurface.copy(alpha = 0.55f))
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            "#$it",
+                            style = MaterialTheme.typography.caption,
+                            color = mutedOnSurface(),
+                        )
+                    }
+                    if (detail.ratingTotal > 0) {
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            "${detail.ratingTotal} 人评分",
+                            style = MaterialTheme.typography.caption,
+                            color = mutedOnSurface(),
+                        )
                     }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     listOfNotNull(
                         detail.date?.let { "首播 $it" },
                         detail.platform,
                         detail.eps?.let { "$it 话" },
                     ).joinToString(" · "),
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(),
                 )
-                if (detail.ratingTotal > 0) {
-                    Text(
-                        "${detail.ratingTotal} 人评分",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
-                    )
-                }
             }
         }
     }
@@ -895,90 +909,76 @@ private fun CollectionBar(
     onRate: (Int) -> Unit,
     onComment: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        if (!hasToken) {
-            Surface(
-                color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+    Surface(
+        color = MaterialTheme.colors.surface,
+        shape = RoundedCornerShape(AnimeDimens.cardRadius),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 10.dp),
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            if (!hasToken) {
                 Text(
                     "绑定 Bangumi 访问令牌后可收藏、评分、标记进度。",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(),
                 )
-            }
-            Spacer(Modifier.height(8.dp))
-            return
-        }
-        HorizontalChips {
-            collectionOptions.forEach { (value, label) ->
-                TagPill(label, selected = collection?.type == value, onClick = { onStatus(value) })
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "评分",
-                fontSize = 12.sp,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.width(40.dp),
-            )
-            HorizontalChips(Modifier.weight(1f)) {
-                (1..10).forEach { value ->
-                    TagPill(
-                        "$value",
-                        selected = collection?.rate == value,
-                        onClick = { onRate(value) },
-                    )
+                Spacer(Modifier.height(6.dp))
+                TagPill("去绑定")
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("收藏", style = MaterialTheme.typography.subtitle2, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(10.dp))
+                    HorizontalChips(Modifier.weight(1f)) {
+                        collectionOptions.forEach { (value, label) ->
+                            TagPill(label, selected = collection?.type == value, onClick = { onStatus(value) })
+                        }
+                    }
                 }
-                TagPill(
-                    "清除",
-                    selected = (collection?.rate ?: 0) == 0,
-                    onClick = { onRate(0) },
-                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "评分",
+                        style = MaterialTheme.typography.caption,
+                        color = mutedOnSurface(),
+                        modifier = Modifier.width(34.dp),
+                    )
+                    HorizontalChips(Modifier.weight(1f)) {
+                        (1..10).forEach { value ->
+                            TagPill("$value", selected = collection?.rate == value, onClick = { onRate(value) })
+                        }
+                        TagPill("清除", selected = (collection?.rate ?: 0) == 0, onClick = { onRate(0) })
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TagPill("写短评", onClick = onComment)
+                    if (saving) {
+                        Spacer(Modifier.width(10.dp))
+                        CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp)
+                    }
+                    collection?.comment?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.width(9.dp))
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.caption,
+                            color = mutedOnSurface(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TagPill("写短评", onClick = onComment)
-            if (saving) {
-                Spacer(Modifier.width(10.dp))
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            }
-            collection?.comment?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    it,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.55f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        Spacer(Modifier.height(10.dp))
     }
 }
 
 @Composable
 private fun SubjectTabs(selected: Int, onSelect: (Int) -> Unit) {
-    val titles = listOf("章节", "简介", "角色", "制作", "关联", "弹幕", "评论", "资源")
-    ScrollableTabRow(
-        selectedTabIndex = selected,
-        edgePadding = 8.dp,
-        backgroundColor = MaterialTheme.colors.background,
-        contentColor = MaterialTheme.colors.primary,
-    ) {
-        titles.forEachIndexed { index, title ->
-            Tab(
-                selected = selected == index,
-                onClick = { onSelect(index) },
-                text = { Text(title, fontSize = 12.sp) },
-            )
-        }
-    }
+    AnimeTabRow(
+        tabs = listOf("章节", "简介", "角色", "制作", "关联", "弹幕", "评论", "资源"),
+        selected = selected,
+        onSelect = onSelect,
+    )
 }
 
 @Composable
@@ -987,7 +987,7 @@ private fun EpisodeGrid(
     watched: Set<Int>,
     onToggle: (EpisodeItem) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 6.dp)) {
         episodes.chunked(5).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { episode ->
@@ -1007,31 +1007,29 @@ private fun EpisodeCell(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier
-            .height(46.dp)
-            .background(
-                if (watched) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface.copy(alpha = 0.07f),
-                RoundedCornerShape(10.dp),
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    Surface(
+        color = if (watched) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface.copy(alpha = 0.06f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.height(44.dp).clickable(onClick = onClick),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (watched) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colors.onPrimary,
-                    modifier = Modifier.size(13.dp),
+        Box(contentAlignment = Alignment.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (watched) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colors.onPrimary,
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Spacer(Modifier.width(1.dp))
+                }
+                Text(
+                    episode.label,
+                    style = MaterialTheme.typography.caption,
+                    fontWeight = if (watched) FontWeight.Bold else FontWeight.Medium,
+                    color = if (watched) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
                 )
-                Spacer(Modifier.width(2.dp))
             }
-            Text(
-                episode.label,
-                fontSize = 12.sp,
-                color = if (watched) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
-            )
         }
     }
 }
@@ -1041,31 +1039,36 @@ private fun RatingHistogram(detail: SubjectDetail) {
     if (detail.ratingTotal <= 0) return
     val max = detail.ratingCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
     Column(Modifier.fillMaxWidth()) {
-        Text("评分分布", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        Spacer(Modifier.height(6.dp))
+        Text("评分分布", style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
         detail.ratingCounts.forEachIndexed { index, count ->
             val score = 10 - index
             Row(Modifier.fillMaxWidth().padding(vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("$score", fontSize = 10.sp, modifier = Modifier.width(18.dp))
+                Text(
+                    "$score",
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(),
+                    modifier = Modifier.width(18.dp),
+                )
                 Box(
-                    Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .background(MaterialTheme.colors.onSurface.copy(alpha = 0.07f), RoundedCornerShape(3.dp)),
+                    Modifier.weight(1f).height(7.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(mutedOnSurface(0.08f)),
                 ) {
                     Box(
                         Modifier
                             .fillMaxWidth(count.toFloat() / max)
-                            .height(6.dp)
-                            .background(MaterialTheme.colors.primary, RoundedCornerShape(3.dp)),
+                            .height(7.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colors.primary),
                     )
                 }
                 Text(
                     "$count",
-                    fontSize = 9.sp,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
-                    modifier = Modifier.width(30.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.55f),
+                    modifier = Modifier.width(34.dp),
+                    textAlign = TextAlign.End,
                 )
             }
         }

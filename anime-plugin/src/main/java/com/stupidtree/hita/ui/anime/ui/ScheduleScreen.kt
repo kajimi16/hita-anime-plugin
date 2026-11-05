@@ -24,20 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.stupidtree.hita.ui.anime.data.BgmSource
 import com.stupidtree.hita.ui.anime.data.Schedule
-import com.stupidtree.hita.ui.anime.data.formatShortDay
 import com.stupidtree.hita.ui.anime.data.todayIso
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * 放送表：当前在播番组按星期分组。
- *
- * 这里刻意不按「首播日期」筛选 —— 那会把已经播了几十集的长篇排除掉。
- * 数据源是 Bangumi `calendar`（当前在播），不是 `air_date` 搜索。
- */
 @Composable
 fun ScheduleScreen(
     bgm: BgmSource,
@@ -64,15 +56,15 @@ fun ScheduleScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp),
+            Modifier.fillMaxWidth().padding(start = AnimeDimens.screenPadding, end = AnimeDimens.screenPadding, top = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("放送表", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+                Text("放送表", style = MaterialTheme.typography.h4, fontWeight = FontWeight.Bold)
                 Text(
                     "当前在播 · 按星期 · 含长篇连载",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colors.onBackground.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.55f),
                 )
             }
             TagPill("刷新", onClick = { tick++ })
@@ -84,19 +76,29 @@ fun ScheduleScreen(
             schedule == null -> EmptyState("暂无放送数据")
             else -> {
                 val current = schedule!!
+                val total = current.days.sumOf { it.items.size }
+                Text(
+                    "本周 $total 部在播",
+                    style = MaterialTheme.typography.caption,
+                    color = mutedOnSurface(0.5f),
+                    modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding, vertical = 8.dp),
+                )
                 LazyRow(
-                    Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = AnimeDimens.screenPadding),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(current.days, key = { it.date }) { day ->
-                        TagPill(
-                            text = "${formatShortDay(day.date)} · ${day.items.size}",
+                    items(current.days.size) { index ->
+                        val day = current.days[index]
+                        DaySegment(
+                            date = day.date,
+                            index = index,
+                            count = day.items.size,
                             selected = day.date == selectedDate,
                             onClick = { selectedDate = day.date },
                         )
                     }
                 }
+                Spacer(Modifier.height(8.dp))
                 val day = current.days.firstOrNull { it.date == selectedDate }
                 if (day == null || day.items.isEmpty()) {
                     EmptyState("这一天没有在播番组")
@@ -104,10 +106,10 @@ fun ScheduleScreen(
                     LazyColumn(Modifier.fillMaxSize()) {
                         item {
                             Text(
-                                "点击条目查看详情与章节进度。",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colors.onBackground.copy(alpha = 0.45f),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                                "${day.items.size} 部",
+                                style = MaterialTheme.typography.overline,
+                                color = mutedOnSurface(0.5f),
+                                modifier = Modifier.padding(horizontal = AnimeDimens.screenPadding, vertical = 4.dp),
                             )
                         }
                         items(day.items, key = { it.id }) { subject ->
@@ -115,7 +117,7 @@ fun ScheduleScreen(
                                 onOpenSubject(subject.id, subject.displayName)
                             }
                         }
-                        item { Spacer(Modifier.height(24.dp)) }
+                        item { Spacer(Modifier.height(96.dp)) }
                     }
                 }
             }

@@ -64,18 +64,22 @@ fun ProfileScreen(prefs: Prefs, bgm: BgmSource, hitani: HitaniApi) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            Modifier.fillMaxWidth().padding(start = AnimeDimens.screenPadding, end = AnimeDimens.screenPadding, top = 10.dp),
         ) {
-            Text("我的", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+            Text("我的", style = MaterialTheme.typography.h4, fontWeight = FontWeight.Bold)
+            Text(
+                "Bangumi / 站点 / 缓存",
+                style = MaterialTheme.typography.caption,
+                color = mutedOnSurface(0.55f),
+            )
         }
 
         Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(AnimeDimens.cardRadius),
             elevation = 0.dp,
             backgroundColor = MaterialTheme.colors.surface,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 8.dp),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text("Bangumi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -165,7 +169,7 @@ fun ProfileScreen(prefs: Prefs, bgm: BgmSource, hitani: HitaniApi) {
         }
 
         Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(AnimeDimens.cardRadius),
             elevation = 0.dp,
             backgroundColor = MaterialTheme.colors.surface,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -263,10 +267,10 @@ fun ProfileScreen(prefs: Prefs, bgm: BgmSource, hitani: HitaniApi) {
         }
 
         Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(AnimeDimens.cardRadius),
             elevation = 0.dp,
             backgroundColor = MaterialTheme.colors.surface,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = AnimeDimens.screenPadding, vertical = 8.dp),
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text("其它", fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -285,7 +289,7 @@ fun ProfileScreen(prefs: Prefs, bgm: BgmSource, hitani: HitaniApi) {
                 }
                 Divider(Modifier.padding(vertical = 10.dp))
                 Text(
-                    "番剧插件 0.3.0 · API 5 · Compose 1.6.8",
+                    "番剧插件 0.4.0 · API 5 · Compose 1.6.8",
                     fontSize = 11.sp,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
                 )
@@ -296,6 +300,6 @@ fun ProfileScreen(prefs: Prefs, bgm: BgmSource, hitani: HitaniApi) {
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(96.dp))
     }
 }

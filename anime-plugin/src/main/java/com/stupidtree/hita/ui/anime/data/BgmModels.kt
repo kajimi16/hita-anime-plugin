@@ -180,7 +180,7 @@ data class SearchFilter(
     val sort: String = "match",
     val tags: List<String> = emptyList(),
     val year: Int? = null,
-    val month: Int? = null,
+    val quarter: Int? = null,
 )
 
 data class SearchPage(
